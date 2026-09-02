@@ -198,7 +198,7 @@ export const SupersyamHome = () => {
                   <button 
                     onClick={() => { 
                       setCart([...cart, item]); 
-                      alert(เพิ่ม "${item.name}" ลงในตะกร้าเรียบร้อย!); 
+                      alert(`เพิ่ม "${item.name}" ลงในตะกร้าเรียบร้อย!`); 
                     }} 
                     className="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 text-slate-950 font-bold py-3 rounded-xl shadow-md hover:opacity-90 transition text-sm"
                   >
@@ -308,7 +308,7 @@ export const SupersyamHome = () => {
               <button onClick={handleRegister} type="button" className="flex-1 py-3 bg-emerald-500 text-slate-950 font-bold rounded-xl hover:bg-emerald-400 transition text-sm">สมัครสมาชิก</button>
             </div>
           </form>
-          <button onClick={() => setCurrentView('home')} className="mt-6 w-full text-center text-sm text-slate-500 hover:text-white">← กลับหน้าหลัก</v:button>
+          <button onClick={() => setCurrentView('home')} className="mt-6 w-full text-center text-sm text-slate-500 hover:text-white">← กลับหน้าหลัก</button>
         </div>
       )}
 
