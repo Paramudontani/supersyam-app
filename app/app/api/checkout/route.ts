@@ -1,15 +1,16 @@
-import { NextResponse } from 'main'; // หรือใช้ standard NextResponse จาก next/server
-import { NextResponse as NextServerResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2025-02-28.acacia' as any,
+  apiVersion: '2023-10-16', // ใช้ API Version มาตรฐานที่เสถียร
 });
 
 export async function POST() {
   try {
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card', 'promptpay'], // รองรับทั้งบัตรและสแกนพร้อมเพย์
+      payment_method_types: ['card', 'promptpay'],
       line_items: [
         {
           price_data: {
@@ -18,18 +19,18 @@ export async function POST() {
               name: 'Supersyam Luxury Experience',
               description: 'แพ็กเกจท่องเที่ยวและบริการสุดเอ็กซ์คลูซีฟ',
             },
-            unit_amount: 500000, // ราคา 5,000 บาท (หน่วยเป็นสตางค์)
+            unit_amount: 500000, // 5,000 บาท
           },
           quantity: 1,
         },
       ],
       mode: 'payment',
-      success_url: ${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/?success=true,
-      cancel_url: ${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/?canceled=true,
+      success_url: `${origin}/?success=true`,
+      cancel_url: `${origin}/?canceled=true`,
     });
 
-    return NextServerResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
   } catch (error: any) {
-    return NextServerResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

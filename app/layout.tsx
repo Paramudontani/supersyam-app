@@ -22,14 +22,6 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="th">
-      <body>{children}</body>
-    </html>
-  );
-}
-
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
