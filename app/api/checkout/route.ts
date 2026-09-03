@@ -1,55 +1,64 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
-const catalog = new Map([
-  ['h1', { name: 'โรงแรมหรูริมแม่น้ำเจ้าพระยา', price: 4200 }],
-  ['h2', { name: 'พูลวิลล่าส่วนตัวใกล้หาดป่าตอง', price: 6500 }],
-  ['h3', { name: 'รีสอร์ตท่ามกลางขุนเขาและหมอกเช้า', price: 2900 }],
-  ['t1', { name: 'ทัวร์ล่องเรือเกาะพีพีเต็มวัน', price: 1500 }],
-  ['t2', { name: 'บัตรเข้าชมมหานคร สกายวอล์ค', price: 880 }],
-  ['t3', { name: 'ดินเนอร์ล่องเรือเจ้าพระยา', price: 1200 }],
-  ['c1', { name: 'รถเช่าขับเอง รับที่สนามบิน', price: 950 }],
-  ['c2', { name: 'รถตู้ VIP พร้อมคนขับนำเที่ยว', price: 2500 }],
-  ['c3', { name: 'รถยนต์ไฟฟ้าสำหรับเที่ยวเมือง', price: 1100 }],
-  ['b1', { name: 'ตั๋วรถทัวร์ กรุงเทพฯ - พัทยา', price: 180 }],
-  ['b2', { name: 'รถทัวร์ VIP กรุงเทพฯ - เชียงใหม่', price: 780 }],
-  ['b3', { name: 'ตั๋วรถทัวร์ กรุงเทพฯ - ภูเก็ต', price: 950 }],
-  ['f1', { name: 'บุฟเฟต์วิวเมืองบนตึกใบหยก 2', price: 850 }],
-  ['f2', { name: 'ดีลสตรีทฟู้ดมิชลินย่านเยาวราช', price: 500 }],
-  ['f3', { name: 'เซ็ตอาหารเหนือรสต้นตำรับ', price: 690 }],
-  ['a1', { name: 'เที่ยวบินไปกลับ กรุงเทพฯ - ภูเก็ต', price: 1890 }],
-  ['a2', { name: 'เที่ยวบินไปกลับ กรุงเทพฯ - เชียงใหม่', price: 1490 }],
-  ['a3', { name: 'เที่ยวบินไปกลับ กรุงเทพฯ - กระบี่', price: 2190 }],
-  ['e1', { name: 'Thailand 5G eSIM เน็ตไม่จำกัด 10 วัน', price: 390 }],
-  ['e2', { name: 'Thailand eSIM เน็ต 15GB ใช้ได้ 8 วัน', price: 249 }],
-]);
-
-export async function POST(request: Request) {
-  const secretKey = process.env.STRIPE_SECRET_KEY;
-  if (!secretKey) return NextResponse.json({ error: 'ยังไม่ได้ตั้งค่า Stripe secret key' }, { status: 503 });
-
+export async function POST(req: Request) { // 👈 เพิ่ม req เพื่อรับข้อมูล User จากหน้าสมัคร
   try {
-    const body = await request.json() as { productIds?: unknown };
-    const productIds = Array.isArray(body.productIds) ? body.productIds.filter((id): id is string => typeof id === 'string') : [];
-    const lineItems = productIds.map((id) => {
-      const product = catalog.get(id);
-      if (!product) throw new Error('ไม่พบรายการสินค้า');
-      return { price_data: { currency: 'thb', product_data: { name: product.name }, unit_amount: product.price * 100 }, quantity: 1 };
-    });
-    if (lineItems.length === 0) return NextResponse.json({ error: 'ตะกร้าว่าง' }, { status: 400 });
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+
+    if (!secretKey) {
+      console.error('STRIPE_ERROR: ไม่พบ STRIPE_SECRET_KEY ในไฟล์ .env.local');
+      return NextResponse.json(
+        { error: 'ไม่พบ STRIPE_SECRET_KEY ในไฟล์ .env.local' },
+        { status: 500 }
+      );
+    }
+
+    // 1. รับข้อมูลที่ส่งมาจากฟอร์มสมัครสมาชิก (เช่น email, password)
+    const body = await req.json().catch(() => ({}));
+    const { email, password, name } = body;
+
+    // 2. 🔥 สั่งบันทึก User เข้า Database / Auth System ของคุณตรงนี้!
+    // (ตัวอย่าง: ถ้าใช้ Supabase/Prisma/Firebase ก็ใส่คำสั่งสร้าง User ตรงนี้)
+    /* 
+       await createUserInDatabase({ email, password, name });
+    */
 
     const stripe = new Stripe(secretKey);
-    const origin = request.headers.get('origin') || 'http://localhost:3000';
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+    // 3. สร้าง Checkout Session ตามเดิมของคุณ
     const session = await stripe.checkout.sessions.create({
+      customer_email: email, // แนบอีเมลลูกค้าไปด้วย
+      line_items: [
+        {
+          price_data: {
+            currency: 'thb',
+            product_data: {
+              name: 'Supersyam Luxury Experience',
+              description: 'แพ็กเกจท่องเที่ยวและบริการสุดเอ็กซ์คลูซีฟ',
+            },
+            unit_amount: 500000, // 5,000 THB (หน่วยสตางค์)
+          },
+          quantity: 1,
+        },
+      ],
       mode: 'payment',
-      line_items: lineItems,
-      success_url: `${origin}/?payment=success`,
-      cancel_url: `${origin}/?payment=cancelled`,
-      billing_address_collection: 'auto',
+      success_url: `${origin}/?success=true`,
+      cancel_url: `${origin}/?canceled=true`,
     });
+
     return NextResponse.json({ url: session.url });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'สร้างหน้าชำระเงินไม่สำเร็จ';
-    return NextResponse.json({ error: message }, { status: 400 });
+  } catch (error: any) {
+    console.error('--- STRIPE API ERROR DETAILED ---');
+    console.error('Message:', error.message);
+    console.error('Type:', error.type);
+    console.error('Code:', error.code);
+    console.error('Param:', error.param);
+    console.error('--------------------------------');
+
+    return NextResponse.json(
+      { error: error.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับ Stripe' },
+      { status: 400 }
+    );
   }
 }
