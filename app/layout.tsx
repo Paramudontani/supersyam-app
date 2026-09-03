@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'SUPERSYAM - Thailand, Your Way',
   description: 'ออกไปค้นพบความสุขที่ใช่',
   manifest: '/manifest.json',
@@ -22,8 +22,11 @@ export const metadata = {
   },
 };
 
-
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="en"
