@@ -1,29 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 export default function CheckoutButton() {
   const [loading, setLoading] = useState(false);
 
   const handleCheckout = async () => {
-    setLoading(true);
     try {
-      // จำลองการเรียก API ไปยังหลังบ้านเพื่อสร้าง Checkout Session ของ Stripe
-      const response = await fetch('/api/checkout', {
+      setLoading(true);
+      const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
       });
-      
-      const data = await response.json();
+
+      const data = await res.json();
+
       if (data.url) {
-        window.location.href = data.url; // พาผู้ใช้ไปยังหน้าชำระเงินของ Stripe
+        window.location.href = data.url;
       } else {
-        alert('เกิดข้อผิดพลาดในการเชื่อมต่อระบบชำระเงิน');
+        alert(data.error || 'เกิดข้อผิดพลาดในการดึงหน้าชำระเงิน');
       }
-    } catch (error) {
-      console.error('Error:', error);
+    } catch (error: any) {
+      alert('ไม่สามารถเชื่อมต่อระบบชำระเงินได้: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -33,9 +33,9 @@ export default function CheckoutButton() {
     <button
       onClick={handleCheckout}
       disabled={loading}
-      className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-amber-200 via-amber-400 to-yellow-500 text-black text-xs uppercase tracking-widest font-semibold rounded-xl hover:opacity-95 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center justify-center space-x-2"
+      className="px-6 py-2.5 rounded-full bg-gradient-to-r from-amber-200 via-amber-300 to-yellow-500 text-black text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all disabled:opacity-50"
     >
-      <span>{loading ? 'กำลังเชื่อมต่อระบบชำระเงิน...' : '✦ ชำระเงิน / จองบริการระดับลักชูรี'}</span>
+      {loading ? 'กำลังเชื่อมต่อ...' : 'ชำระเงิน'}
     </button>
   );
 }
