@@ -12,10 +12,24 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Supersyam | Travel with feeling",
-  description: "Handpicked stays, local experiences, and easy escapes.",
+export const metadata = {
+  title: 'SUPERSYAM - Thailand, Your Way',
+  description: 'ออกไปค้นพบความสุขที่ใช่',
+  manifest: '/manifest.json',
+  icons: {
+    icon: '/Supersyam.png',
+    apple: '/Supersyam.png',
+  },
 };
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="th">
+      <body>{children}</body>
+    </html>
+  );
+}
+
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

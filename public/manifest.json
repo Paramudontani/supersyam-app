@@ -1,0 +1,16 @@
+{
+  "name": "Supersyam",
+  "short_name": "Supersyam",
+  "description": "ออกไปค้นพบความสุขที่ใช่ จองโรงแรม กิจกรรม และประสบการณ์ทั่วประเทศไทย",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/Supersyam.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}
