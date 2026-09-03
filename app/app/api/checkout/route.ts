@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16', // ใช้ API Version มาตรฐานที่เสถียร
+  apiVersion: '2023-10-16' as any,
 });
 
 export async function POST() {
@@ -19,7 +19,7 @@ export async function POST() {
               name: 'Supersyam Luxury Experience',
               description: 'แพ็กเกจท่องเที่ยวและบริการสุดเอ็กซ์คลูซีฟ',
             },
-            unit_amount: 500000, // 5,000 บาท
+            unit_amount: 500000,
           },
           quantity: 1,
         },
