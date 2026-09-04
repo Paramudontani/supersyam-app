@@ -16,6 +16,13 @@ type Booking = {
   created_at: string;
 };
 
+type PaymentIntent = {
+  amount: number;
+  products: PublicDeal[];
+};
+
+const membershipFee = 5000;
+
 const categories: Array<{ id: Category; label: string; icon: string }> = [
   { id: 'hotels', label: 'โรงแรมที่พัก', icon: '🏨' },
   { id: 'tours', label: 'ตั๋ว & ทัวร์', icon: '🎟️' },
@@ -60,6 +67,7 @@ export function SupersyamHome() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [pendingPayment, setPendingPayment] = useState<PaymentIntent>({ amount: membershipFee, products: [] });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -88,14 +96,61 @@ export function SupersyamHome() {
     const result = authMode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password });
-    if (result.error) setAuthError(result.error.message);
-    else if (authMode === 'signup') setAuthError('สมัครสมาชิกสำเร็จ กรุณาตรวจสอบอีเมลเพื่อยืนยันบัญชี');
-    else setView('home');
+    if (result.error) {
+      setAuthError(result.error.message);
+      return;
+    }
+
+    const account = result.data.user;
+    if (!account) {
+      setAuthError('ยืนยันบัญชีไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+
+    setUserEmail(account.email ?? email);
+    setUserId(account.id);
+    try {
+      await createStripeCheckout(account.id, account.email ?? email, pendingPayment);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : 'เปิดหน้าชำระเงินไม่สำเร็จ');
+    }
+  }
+
+  async function createStripeCheckout(accountUserId: string, accountEmail: string, payment: PaymentIntent) {
+    if (payment.products.length > 0) {
+      const { error: bookingError } = await supabase.from('bookings').insert(payment.products.map((product) => ({
+        user_id: accountUserId,
+        product_id: product.id,
+        product_name: product.name,
+        amount: product.price,
+        status: 'pending',
+      })));
+      if (bookingError) throw bookingError;
+    }
+
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: accountEmail,
+        productIds: payment.products.map((product) => product.id),
+      }),
+    });
+    const result = await response.json() as { url?: string; error?: string };
+    if (!response.ok || !result.url) throw new Error(result.error || 'Stripe ไม่สามารถสร้างหน้าชำระเงินได้');
+    window.location.assign(result.url);
   }
 
   async function startCheckout() {
+    const payment = {
+      amount: cart.reduce((sum, product) => sum + product.price, 0),
+      products: [...cart],
+    };
+
     if (!userEmail || !userId) {
       setCheckoutError('กรุณาเข้าสู่ระบบก่อนชำระเงิน');
+      setPendingPayment(payment);
+      setAuthMode('login');
       setView('auth');
       return;
     }
@@ -103,25 +158,10 @@ export function SupersyamHome() {
     setIsCheckingOut(true);
     setCheckoutError('');
     try {
-      const { error: bookingError } = await supabase.from('bookings').insert(cart.map((product) => ({
-        user_id: userId,
-        product_id: product.id,
-        product_name: product.name,
-        amount: product.price,
-        status: 'pending',
-      })));
-      if (bookingError) throw bookingError;
-
-      const response = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail, productIds: cart.map((product) => product.id) }),
-      });
-      const result = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !result.url) throw new Error(result.error || 'สร้างหน้าชำระเงินไม่สำเร็จ');
-      window.location.assign(result.url);
+      await createStripeCheckout(userId, userEmail, payment);
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : 'ลองใหม่อีกครั้ง');
+    } finally {
       setIsCheckingOut(false);
     }
   }
@@ -162,7 +202,10 @@ export function SupersyamHome() {
           <button className="cart-button" onClick={() => document.getElementById('cart')?.scrollIntoView({ behavior: 'smooth' })} type="button">ตะกร้า <b>{cart.length}</b></button>
           {userEmail
             ? <button className="account-button" onClick={() => { setView('dashboard'); void loadBookings(); }} type="button">👤 บัญชีของฉัน</button>
-            : <button className="account-button" onClick={() => setView('auth')} type="button">เข้าสู่ระบบ</button>}
+            : <>
+                <button className="signup-button" onClick={() => { setPendingPayment({ amount: membershipFee, products: [] }); setAuthMode('signup'); setAuthError(''); setView('auth'); }} type="button">สมัครสมาชิก</button>
+                <button className="account-button" onClick={() => { setPendingPayment({ amount: membershipFee, products: [] }); setAuthMode('login'); setAuthError(''); setView('auth'); }} type="button">เข้าสู่ระบบ</button>
+              </>}
         </div>
       </header>
 
@@ -269,7 +312,7 @@ export function SupersyamHome() {
             <>
               <p>มี {cart.length} รายการพร้อมชำระเงิน</p>
               <button className="primary-action" disabled={isCheckingOut} onClick={startCheckout} type="button">
-                {isCheckingOut ? 'กำลังเตรียมการชำระเงิน...' : 'ชำระเงินด้วย Stripe'}
+                {isCheckingOut ? 'กำลังเปิด Stripe...' : 'ชำระเงินด้วย PromptPay / บัตร'}
               </button>
               {checkoutError && <p role="alert">{checkoutError}</p>}
             </>
@@ -282,6 +325,7 @@ export function SupersyamHome() {
           <div className="account-panel">
             <p className="section-kicker">WELCOME TO SUPERSYAM</p>
             <h2>{authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}</h2>
+            <p className="auth-payment-note">หลังยืนยันบัญชี ระบบจะเปิด Stripe เพื่อชำระด้วย PromptPay หรือบัตร ยอด ฿{pendingPayment.amount.toLocaleString()}</p>
             <form onSubmit={handleAuth}>
               <label>อีเมล<input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
               <label>รหัสผ่าน<input autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={6} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getInternalDeal } from '@/lib/partner/deals';
 
-export async function POST(req: Request) { // 👈 เพิ่ม req เพื่อรับข้อมูล User จากหน้าสมัคร
+export async function POST(req: Request) {
   try {
     const secretKey = process.env.STRIPE_SECRET_KEY;
 
@@ -13,51 +14,65 @@ export async function POST(req: Request) { // 👈 เพิ่ม req เพื
       );
     }
 
-    // 1. รับข้อมูลที่ส่งมาจากฟอร์มสมัครสมาชิก (เช่น email, password)
-    const body = await req.json().catch(() => ({}));
-    const { email, password, name } = body;
-
-    // 2. 🔥 สั่งบันทึก User เข้า Database / Auth System ของคุณตรงนี้!
-    // (ตัวอย่าง: ถ้าใช้ Supabase/Prisma/Firebase ก็ใส่คำสั่งสร้าง User ตรงนี้)
-    /* 
-       await createUserInDatabase({ email, password, name });
-    */
+    const body = await req.json().catch(() => ({})) as { email?: unknown; productIds?: unknown };
+    const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const productIds = Array.isArray(body.productIds)
+      ? body.productIds.filter((id): id is string => typeof id === 'string')
+      : [];
 
     const stripe = new Stripe(secretKey);
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+    const origin = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-    // 3. สร้าง Checkout Session ตามเดิมของคุณ
-    const session = await stripe.checkout.sessions.create({
-      customer_email: email, // แนบอีเมลลูกค้าไปด้วย
-      line_items: [
-        {
+    if (productIds.length > 0) {
+      for (const productId of productIds) {
+        const product = getInternalDeal(productId);
+        if (!product) {
+          return NextResponse.json({ error: `ไม่พบสินค้า ${productId}` }, { status: 400 });
+        }
+        lineItems.push({
           price_data: {
             currency: 'thb',
-            product_data: {
-              name: 'Supersyam Luxury Experience',
-              description: 'แพ็กเกจท่องเที่ยวและบริการสุดเอ็กซ์คลูซีฟ',
-            },
-            unit_amount: 500000, // 5,000 THB (หน่วยสตางค์)
+            product_data: { name: product.name },
+            unit_amount: product.price * 100,
           },
           quantity: 1,
+        });
+      }
+    } else {
+      lineItems.push({
+        price_data: {
+          currency: 'thb',
+          product_data: {
+            name: 'Supersyam Luxury Experience',
+            description: 'แพ็กเกจสมาชิกและบริการสุดเอ็กซ์คลูซีฟ',
+          },
+          unit_amount: 500000,
         },
-      ],
+        quantity: 1,
+      });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      ...(email ? { customer_email: email } : {}),
+      line_items: lineItems,
       mode: 'payment',
       success_url: `${origin}/?success=true`,
       cancel_url: `${origin}/?canceled=true`,
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const stripeError = error as { message?: string; type?: string; code?: string; param?: string };
     console.error('--- STRIPE API ERROR DETAILED ---');
-    console.error('Message:', error.message);
-    console.error('Type:', error.type);
-    console.error('Code:', error.code);
-    console.error('Param:', error.param);
+    console.error('Message:', stripeError.message);
+    console.error('Type:', stripeError.type);
+    console.error('Code:', stripeError.code);
+    console.error('Param:', stripeError.param);
     console.error('--------------------------------');
 
     return NextResponse.json(
-      { error: error.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับ Stripe' },
+      { error: stripeError.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อกับ Stripe' },
       { status: 400 }
     );
   }
