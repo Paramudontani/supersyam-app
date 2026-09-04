@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { SupersyamHome } from '@/components/modules/supersyamHome';
 
 export default function Home() {
@@ -71,19 +72,30 @@ export default function Home() {
           <div className="lg:col-span-5 relative">
             <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-yellow-600/10 rounded-3xl blur-xl opacity-50 group-hover:opacity-100 transition duration-1000"></div>
             
-            <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-b from-neutral-900/90 to-black/90 p-8 flex flex-col justify-between shadow-2xl backdrop-blur-md">
+            <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden border border-white/10 shadow-2xl backdrop-blur-md">
+              <Image
+                src="/supersyam.png"
+                alt="Supersyam Thailand"
+                fill
+                priority
+                sizes="(min-width: 1024px) 35vw, 100vw"
+                className="object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
               <div className="absolute top-0 right-0 -m-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
               
-              <div className="flex justify-between items-start z-10">
-                <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400 font-semibold border-b border-amber-400/30 pb-1">
-                  Featured Collection
-                </span>
-                <span className="text-[10px] tracking-widest text-neutral-500 uppercase">2026 Edition</span>
-              </div>
+              <div className="absolute inset-0 p-8 flex flex-col justify-between">
+                <div className="flex justify-between items-start z-10">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-amber-400 font-semibold border-b border-amber-400/30 pb-1">
+                    Featured Collection
+                  </span>
+                  <span className="text-[10px] tracking-widest text-neutral-500 uppercase">2026 Edition</span>
+                </div>
 
-              <div className="z-10 space-y-3">
-                <h2 className="text-2xl font-light tracking-wide text-neutral-100">Thailand, Your Way</h2>
-                <p className="text-xs text-neutral-400 font-light leading-relaxed">ออกแบบการเดินทางเฉพาะตัวคุณ สู่ความสุขที่เหนือกว่า</p>
+                <div className="z-10 space-y-3">
+                  <h2 className="text-2xl font-light tracking-wide text-neutral-100">Thailand, Your Way</h2>
+                  <p className="text-xs text-neutral-300 font-light leading-relaxed">ออกแบบการเดินทางเฉพาะตัวคุณ สู่ความสุขที่เหนือกว่า</p>
+                </div>
               </div>
             </div>
           </div>
@@ -93,6 +105,4 @@ export default function Home() {
     </main>
   );
 }
-
-
 
