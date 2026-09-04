@@ -209,7 +209,7 @@ export function SupersyamHome() {
         </div>
       </header>
 
-      {view === 'home' && <main id="top">
+      <main id="top">
         <section className="travel-hero">
           <div className="hero-content">
             <p className="hero-kicker">THAILAND, YOUR WAY</p>
@@ -326,13 +326,14 @@ export function SupersyamHome() {
             </>
           )}
         </section>
-      </main>}
+      </main>
 
       {view === 'auth' && (
-        <section className="panel-view">
+        <section aria-labelledby="auth-heading" aria-modal="true" className="panel-view account-modal" role="dialog">
           <div className="account-panel">
+            <button aria-label="ปิดหน้าสมัครสมาชิก" className="modal-close" onClick={() => setView('home')} type="button">×</button>
             <p className="section-kicker">WELCOME TO SUPERSYAM</p>
-            <h2>{authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}</h2>
+            <h2 id="auth-heading">{authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}</h2>
             <p className="auth-payment-note">หลังยืนยันบัญชี ระบบจะเปิด Stripe เพื่อชำระด้วย PromptPay หรือบัตร ยอด ฿{pendingPayment.amount.toLocaleString()}</p>
             <form onSubmit={handleAuth}>
               <label>อีเมล<input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
@@ -350,10 +351,11 @@ export function SupersyamHome() {
       )}
 
       {view === 'dashboard' && (
-        <section className="panel-view">
+        <section aria-labelledby="account-heading" aria-modal="true" className="panel-view account-modal" role="dialog">
           <div className="account-panel">
+            <button aria-label="ปิดบัญชีของฉัน" className="modal-close" onClick={() => setView('home')} type="button">×</button>
             <p className="section-kicker">YOUR ACCOUNT</p>
-            <h2>บัญชีของฉัน</h2>
+            <h2 id="account-heading">บัญชีของฉัน</h2>
             <p className="signed-email">{userEmail}</p>
             <div className="dashboard-stat"><strong>{cart.length}</strong><span>รายการในตะกร้าปัจจุบัน</span></div>
             <h3 className="booking-heading">ประวัติการจอง</h3>

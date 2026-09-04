@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       ...(email ? { customer_email: email } : {}),
       line_items: lineItems,
       mode: 'payment',
+      payment_method_types: ['card', 'promptpay'],
       success_url: `${origin}/?success=true`,
       cancel_url: `${origin}/?canceled=true`,
     });
