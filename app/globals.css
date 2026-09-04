@@ -102,6 +102,23 @@ h2 { font-size: clamp(2rem, 3vw, 3.2rem); font-weight: 400; letter-spacing: -.03
 .hero-scene { background: #64748b; }.scene-sun { background: #d4af37; }.wave-one { background: #cbd5e1; }.wave-two { background: #bfa159; }
 .quick-card:hover { background: #f1f5f9; }.pattern-hotels { background: linear-gradient(145deg, #64748b 0 35%, #cbd5e1 35% 65%, #d4af37 65%); }.pattern-tours { background: linear-gradient(145deg, #d4af37 0 35%, #0f172a 35% 65%, #64748b 65%); }.pattern-cars { background: linear-gradient(145deg, #0f172a 0 35%, #bfa159 35% 65%, #d4af37 65%); }.pattern-food { background: linear-gradient(145deg, #cbd5e1 0 35%, #d4af37 35% 65%, #64748b 65%); }.pattern-flights { background: linear-gradient(145deg, #0f172a 0 35%, #64748b 35% 65%, #d4af37 65%); }.pattern-esim { background: linear-gradient(145deg, #64748b 0 35%, #0f172a 35% 65%, #d4af37 65%); }
 
+.province-section { border-top: 1px solid #dfd8cd; margin: 0 auto; max-width: 1280px; padding: 56px 5vw; }
+.province-heading { align-items: end; display: flex; justify-content: space-between; margin-bottom: 24px; }
+.province-heading .section-kicker { margin-bottom: 12px; }
+.province-heading h2 { font-size: clamp(1.8rem, 3vw, 3rem); font-weight: 400; letter-spacing: -.03em; margin: 0; }
+.province-heading > p { color: #677477; font: .72rem Arial, sans-serif; letter-spacing: .06em; margin: 0; }
+.province-grid { display: grid; gap: 1px; grid-template-columns: repeat(4, 1fr); }
+.province-card { background: #fff; border: 1px solid #cbd5e1; min-height: 148px; padding: 20px; }
+.province-card h3 { color: #0f172a; font: 1.2rem Georgia, serif; margin: 0 0 18px; }
+.province-card p { color: #52616b; font: .78rem/1.5 Arial, sans-serif; margin: 7px 0; }
+.province-card span { color: #b08d25; display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .09em; margin-right: 9px; text-transform: uppercase; width: 31px; }
+@media (max-width: 800px) {
+  .province-section { padding: 42px 22px; }
+  .province-heading { align-items: start; flex-direction: column; gap: 10px; }
+  .province-grid { grid-template-columns: repeat(2, 1fr); }
+  .province-card { min-height: 142px; padding: 16px; }
+}
+
 /* Supersyam's mark pairs a restrained serif S with a warm-gold seal. */
 .travel-logo { align-items: center; display: inline-flex; gap: 10px; }
 .travel-logo .brand-monogram, .footer-brand .brand-monogram {

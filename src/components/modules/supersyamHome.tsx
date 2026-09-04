@@ -26,6 +26,13 @@ const categories: Array<{ id: Category; label: string; icon: string }> = [
   { id: 'esim', label: 'ซิม & eSIM', icon: '📱' },
 ];
 
+const provinceHighlights = [
+  { province: 'กรุงเทพฯ', place: 'วัดอรุณฯ และเยาวราช', food: 'ก๋วยเตี๋ยวเรือ' },
+  { province: 'เชียงใหม่', place: 'ดอยสุเทพ และถนนนิมมาน', food: 'ข้าวซอย' },
+  { province: 'ภูเก็ต', place: 'เมืองเก่า และแหลมพรหมเทพ', food: 'หมี่ฮกเกี้ยน' },
+  { province: 'พระนครศรีอยุธยา', place: 'วัดมหาธาตุ และวัดไชยวัฒนาราม', food: 'กุ้งแม่น้ำเผา' },
+];
+
 const emptyCatalog: Record<Category, PublicDeal[]> = {
   hotels: [],
   tours: [],
@@ -190,6 +197,25 @@ export function SupersyamHome() {
                 <small>ค้นหาดีลที่ดีที่สุด</small>
                 <span className="quick-arrow">↗</span>
               </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="province-section" aria-labelledby="province-heading">
+          <div className="province-heading">
+            <div>
+              <p className="section-kicker">Siam Notes</p>
+              <h2 id="province-heading">ไปจังหวัดไหนดี</h2>
+            </div>
+            <p>จุดหมายและรสชาติที่ไม่ควรพลาด</p>
+          </div>
+          <div className="province-grid">
+            {provinceHighlights.map((highlight) => (
+              <article className="province-card" key={highlight.province}>
+                <h3>{highlight.province}</h3>
+                <p><span>เที่ยว</span>{highlight.place}</p>
+                <p><span>กิน</span>{highlight.food}</p>
+              </article>
             ))}
           </div>
         </section>
