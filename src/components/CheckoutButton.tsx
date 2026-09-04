@@ -22,8 +22,9 @@ export default function CheckoutButton() {
       } else {
         alert(data.error || 'เกิดข้อผิดพลาดในการดึงหน้าชำระเงิน');
       }
-    } catch (error: any) {
-      alert('ไม่สามารถเชื่อมต่อระบบชำระเงินได้: ' + error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'ไม่ทราบสาเหตุ';
+      alert('ไม่สามารถเชื่อมต่อระบบชำระเงินได้: ' + message);
     } finally {
       setLoading(false);
     }
