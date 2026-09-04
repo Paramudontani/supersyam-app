@@ -54,6 +54,8 @@ export function SupersyamHome() {
   const [view, setView] = useState<View>('home');
   const [category, setCategory] = useState<Category>('hotels');
   const [catalog, setCatalog] = useState<Record<Category, PublicDeal[]>>(emptyCatalog);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
   const [cart, setCart] = useState<PublicDeal[]>([]);
   const [query, setQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<PublicDeal | null>(null);
@@ -83,27 +85,35 @@ export function SupersyamHome() {
 
   useEffect(() => {
     fetch('/api/deals')
-      .then((response) => response.json() as Promise<{ byCategory?: Record<Category, PublicDeal[]> }>)
-      .then((payload) => {
-        if (payload.byCategory) setCatalog(payload.byCategory);
+      .then((response) => {
+        if (!response.ok) throw new Error('โหลดรายการไม่สำเร็จ');
+        return response.json() as Promise<{ byCategory?: Record<Category, PublicDeal[]> }>;
       })
-      .catch(() => undefined);
+      .then((payload) => {
+        if (!payload.byCategory) throw new Error('ข้อมูลรายการไม่ถูกต้อง');
+        setCatalog(payload.byCategory);
+      })
+      .catch(() => setCatalogError('โหลดดีลไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่'))
+      .finally(() => setCatalogLoading(false));
   }, []);
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAuthError('');
+    setIsCheckingOut(true);
     const result = authMode === 'login'
       ? await supabase.auth.signInWithPassword({ email, password })
       : await supabase.auth.signUp({ email, password });
     if (result.error) {
       setAuthError(result.error.message);
+      setIsCheckingOut(false);
       return;
     }
 
     const account = result.data.user;
     if (!account) {
       setAuthError('ยืนยันบัญชีไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      setIsCheckingOut(false);
       return;
     }
 
@@ -113,6 +123,7 @@ export function SupersyamHome() {
       await createStripeCheckout(account.id, account.email ?? email, pendingPayment);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'เปิดหน้าชำระเงินไม่สำเร็จ');
+      setIsCheckingOut(false);
     }
   }
 
@@ -234,10 +245,10 @@ export function SupersyamHome() {
           <h2>เลือกสิ่งที่คุณกำลังมองหา</h2>
           <div className="quick-grid">
             {categories.map((item) => (
-              <button className={category === item.id ? 'quick-card active' : 'quick-card'} key={item.id} onClick={() => setCategory(item.id)} type="button">
+              <button className={category === item.id ? 'quick-card active' : 'quick-card'} key={item.id} onClick={() => { setCategory(item.id); setQuery(''); }} type="button">
                 <span className="quick-icon">{item.icon}</span>
                 <strong>{item.label}</strong>
-                <small>ค้นหาดีลที่ดีที่สุด</small>
+                <small>{catalogLoading ? 'กำลังโหลด...' : `${catalog[item.id].length} รายการ`}</small>
                 <span className="quick-arrow">↗</span>
               </button>
             ))}
@@ -294,7 +305,11 @@ export function SupersyamHome() {
               )}
             </div>
           </div>
-          {visibleProducts.length === 0 ? (
+          {catalogLoading ? (
+            <p className="empty-state" role="status">กำลังโหลดดีล...</p>
+          ) : catalogError ? (
+            <p className="catalog-error" role="alert">{catalogError}</p>
+          ) : visibleProducts.length === 0 ? (
             <p className="empty-state">ไม่พบดีลที่ตรงกับคำค้นหา</p>
           ) : (
             <div className="product-grid">
@@ -319,8 +334,9 @@ export function SupersyamHome() {
           ) : (
             <>
               <p>มี {cart.length} รายการพร้อมชำระเงิน</p>
+              <p className="checkout-methods"><strong>ขั้นตอนถัดไป: Stripe Checkout</strong><span>เลือกสแกน PromptPay QR หรือชำระด้วย Visa / Mastercard ได้ทันที</span></p>
               <button className="primary-action" disabled={isCheckingOut} onClick={startCheckout} type="button">
-                {isCheckingOut ? 'กำลังเปิด Stripe...' : 'ชำระเงินด้วย PromptPay / บัตร'}
+                {isCheckingOut ? 'กำลังเปิด Stripe Checkout...' : 'ไปชำระเงิน: PromptPay QR / Mastercard'}
               </button>
               {checkoutError && <p role="alert">{checkoutError}</p>}
             </>
@@ -334,12 +350,14 @@ export function SupersyamHome() {
             <button aria-label="ปิดหน้าสมัครสมาชิก" className="modal-close" onClick={() => setView('home')} type="button">×</button>
             <p className="section-kicker">WELCOME TO SUPERSYAM</p>
             <h2 id="auth-heading">{authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}</h2>
-            <p className="auth-payment-note">หลังยืนยันบัญชี ระบบจะเปิด Stripe เพื่อชำระด้วย PromptPay หรือบัตร ยอด ฿{pendingPayment.amount.toLocaleString()}</p>
+            <p className="auth-payment-note"><strong>1. {authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชี'}</strong><span>2. ระบบพาไป Stripe เพื่อเลือก PromptPay QR หรือ Visa / Mastercard ยอด ฿{pendingPayment.amount.toLocaleString()}</span></p>
             <form onSubmit={handleAuth}>
               <label>อีเมล<input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
               <label>รหัสผ่าน<input autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={6} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
               {authError && <p className="form-error" role="alert">{authError}</p>}
-              <button className="primary-action" type="submit">{authMode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}</button>
+              <button className="primary-action" disabled={isCheckingOut} type="submit">
+                {isCheckingOut ? 'กำลังเปิด Stripe Checkout...' : `${authMode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}และไปชำระเงิน`}
+              </button>
             </form>
             <button className="back-link" onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} type="button">
               {authMode === 'login' ? 'ยังไม่มีบัญชี? สมัครสมาชิก' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}
