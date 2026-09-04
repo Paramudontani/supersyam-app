@@ -108,7 +108,8 @@ h2 { font-size: clamp(2rem, 3vw, 3.2rem); font-weight: 400; letter-spacing: -.03
 .province-heading h2 { font-size: clamp(1.8rem, 3vw, 3rem); font-weight: 400; letter-spacing: -.03em; margin: 0; }
 .province-heading > p { color: #677477; font: .72rem Arial, sans-serif; letter-spacing: .06em; margin: 0; }
 .province-grid { display: grid; gap: 1px; grid-template-columns: repeat(4, 1fr); }
-.province-card { background: #fff; border: 1px solid #cbd5e1; min-height: 148px; padding: 20px; }
+.province-card { background: #fff; border: 1px solid #cbd5e1; cursor: pointer; min-height: 148px; padding: 20px; text-align: left; transition: background .2s ease, border-color .2s ease, transform .2s ease; width: 100%; }
+.province-card:hover, .province-card:focus-visible { background: #fffbeb; border-color: #d4af37; outline: none; transform: translateY(-3px); }
 .province-card h3 { color: #0f172a; font: 1.2rem Georgia, serif; margin: 0 0 18px; }
 .province-card p { color: #52616b; font: .78rem/1.5 Arial, sans-serif; margin: 7px 0; }
 .province-card span { color: #b08d25; display: inline-block; font-size: .62rem; font-weight: 700; letter-spacing: .09em; margin-right: 9px; text-transform: uppercase; width: 31px; }

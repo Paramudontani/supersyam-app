@@ -211,11 +211,21 @@ export function SupersyamHome() {
           </div>
           <div className="province-grid">
             {provinceHighlights.map((highlight) => (
-              <article className="province-card" key={highlight.province}>
+              <button
+                aria-label={`ดูดีลใน${highlight.province}`}
+                className="province-card"
+                key={highlight.province}
+                onClick={() => {
+                  setCategory('hotels');
+                  setQuery(highlight.province);
+                  document.getElementById('popular')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                type="button"
+              >
                 <h3>{highlight.province}</h3>
                 <p><span>เที่ยว</span>{highlight.place}</p>
                 <p><span>กิน</span>{highlight.food}</p>
-              </article>
+              </button>
             ))}
           </div>
         </section>
