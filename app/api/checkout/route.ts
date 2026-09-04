@@ -14,8 +14,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json().catch(() => ({})) as { email?: unknown; productIds?: unknown };
+    const body = await req.json().catch(() => ({})) as { email?: unknown; productIds?: unknown; paymentMethod?: unknown };
     const email = typeof body.email === 'string' ? body.email.trim() : '';
+    const paymentMethod = body.paymentMethod === 'promptpay' || body.paymentMethod === 'card'
+      ? body.paymentMethod
+      : null;
     const productIds = Array.isArray(body.productIds)
       ? body.productIds.filter((id): id is string => typeof id === 'string')
       : [];
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
       ...(email ? { customer_email: email } : {}),
       line_items: lineItems,
       mode: 'payment',
-      payment_method_types: ['card', 'promptpay'],
+      payment_method_types: paymentMethod ? [paymentMethod] : ['promptpay', 'card'],
       success_url: `${origin}/?success=true`,
       cancel_url: `${origin}/?canceled=true`,
     });

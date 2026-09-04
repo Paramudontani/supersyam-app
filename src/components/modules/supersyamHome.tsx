@@ -6,7 +6,8 @@ import { getBookingHref, getCategoryBookingHref } from '@/lib/booking';
 import type { Category, PublicDeal } from '@/lib/partner/types';
 import { supabase } from '@/lib/supabase';
 
-type View = 'home' | 'auth' | 'dashboard';
+type View = 'home' | 'auth' | 'dashboard' | 'payment';
+type PaymentMethod = 'promptpay' | 'card';
 
 type Booking = {
   id: string;
@@ -22,6 +23,35 @@ type PaymentIntent = {
 };
 
 const membershipFee = 5000;
+
+async function withTimeout<T>(request: Promise<T>, timeoutMs = 12000): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('ระบบสมาชิกใช้เวลาตอบกลับนานเกินไป กรุณาลองใหม่')), timeoutMs);
+  });
+
+  return Promise.race([request, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
+function getAuthErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message.trim() : '';
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes('email rate limit exceeded')) {
+    return 'ระบบส่งอีเมลยืนยันถึงขีดจำกัดชั่วคราว กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อผู้ดูแลเพื่อปรับ Email rate limit ใน Supabase';
+  }
+  if (normalizedMessage.includes('user already registered')) {
+    return 'อีเมลนี้สมัครสมาชิกแล้ว กรุณาเข้าสู่ระบบ';
+  }
+  if (normalizedMessage.includes('invalid login credentials')) {
+    return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+  }
+  if (normalizedMessage.includes('email not confirmed')) {
+    return 'กรุณาเปิดอีเมลและกดยืนยันบัญชีก่อนเข้าสู่ระบบ';
+  }
+
+  return message || 'เชื่อมต่อระบบสมาชิกไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่';
+}
 
 const categories: Array<{ id: Category; label: string; icon: string }> = [
   { id: 'hotels', label: 'โรงแรมที่พัก', icon: '🏨' },
@@ -69,6 +99,7 @@ export function SupersyamHome() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
+  const [authNotice, setAuthNotice] = useState('');
   const [pendingPayment, setPendingPayment] = useState<PaymentIntent>({ amount: membershipFee, products: [] });
 
   useEffect(() => {
@@ -100,34 +131,39 @@ export function SupersyamHome() {
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setAuthError('');
+    setAuthNotice('');
     setIsCheckingOut(true);
-    const result = authMode === 'login'
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password });
-    if (result.error) {
-      setAuthError(result.error.message);
-      setIsCheckingOut(false);
-      return;
-    }
-
-    const account = result.data.user;
-    if (!account) {
-      setAuthError('ยืนยันบัญชีไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
-      setIsCheckingOut(false);
-      return;
-    }
-
-    setUserEmail(account.email ?? email);
-    setUserId(account.id);
     try {
-      await createStripeCheckout(account.id, account.email ?? email, pendingPayment);
+      const authRequest = authMode === 'login'
+        ? supabase.auth.signInWithPassword({ email, password })
+        : supabase.auth.signUp({
+            email,
+            password,
+            options: { emailRedirectTo: window.location.origin },
+          });
+      const result = await withTimeout(authRequest);
+      if (result.error) throw result.error;
+
+      const account = result.data.user;
+      if (!account) throw new Error('ยืนยันบัญชีไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+
+      if (authMode === 'signup' && !result.data.session) {
+        setAuthNotice('สมัครสมาชิกสำเร็จ กรุณาเปิดอีเมลเพื่อยืนยันบัญชี แล้วกลับมาเข้าสู่ระบบเพื่อชำระเงิน');
+        setPassword('');
+        return;
+      }
+
+      setUserEmail(account.email ?? email);
+      setUserId(account.id);
+      setView('payment');
     } catch (error) {
-      setAuthError(error instanceof Error ? error.message : 'เปิดหน้าชำระเงินไม่สำเร็จ');
+      setAuthError(getAuthErrorMessage(error));
+    } finally {
       setIsCheckingOut(false);
     }
   }
 
-  async function createStripeCheckout(accountUserId: string, accountEmail: string, payment: PaymentIntent) {
+  async function createStripeCheckout(accountUserId: string, accountEmail: string, payment: PaymentIntent, paymentMethod: PaymentMethod) {
     if (payment.products.length > 0) {
       const { error: bookingError } = await supabase.from('bookings').insert(payment.products.map((product) => ({
         user_id: accountUserId,
@@ -145,6 +181,7 @@ export function SupersyamHome() {
       body: JSON.stringify({
         email: accountEmail,
         productIds: payment.products.map((product) => product.id),
+        paymentMethod,
       }),
     });
     const result = await response.json() as { url?: string; error?: string };
@@ -166,10 +203,20 @@ export function SupersyamHome() {
       return;
     }
 
+    setPendingPayment(payment);
+    setView('payment');
+  }
+
+  async function payWith(paymentMethod: PaymentMethod) {
+    if (!userEmail || !userId) {
+      setView('auth');
+      return;
+    }
+
     setIsCheckingOut(true);
     setCheckoutError('');
     try {
-      await createStripeCheckout(userId, userEmail, payment);
+      await createStripeCheckout(userId, userEmail, pendingPayment, paymentMethod);
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : 'ลองใหม่อีกครั้ง');
     } finally {
@@ -214,8 +261,8 @@ export function SupersyamHome() {
           {userEmail
             ? <button className="account-button" onClick={() => { setView('dashboard'); void loadBookings(); }} type="button">👤 บัญชีของฉัน</button>
             : <>
-                <button className="signup-button" onClick={() => { setPendingPayment({ amount: membershipFee, products: [] }); setAuthMode('signup'); setAuthError(''); setView('auth'); }} type="button">สมัครสมาชิก</button>
-                <button className="account-button" onClick={() => { setPendingPayment({ amount: membershipFee, products: [] }); setAuthMode('login'); setAuthError(''); setView('auth'); }} type="button">เข้าสู่ระบบ</button>
+                <button className="signup-button" onClick={() => { setPendingPayment({ amount: membershipFee, products: [] }); setAuthMode('signup'); setAuthError(''); setAuthNotice(''); setView('auth'); }} type="button">สมัครสมาชิก</button>
+                <button className="account-button" onClick={() => { setPendingPayment({ amount: membershipFee, products: [] }); setAuthMode('login'); setAuthError(''); setAuthNotice(''); setView('auth'); }} type="button">เข้าสู่ระบบ</button>
               </>}
         </div>
       </header>
@@ -350,20 +397,47 @@ export function SupersyamHome() {
             <button aria-label="ปิดหน้าสมัครสมาชิก" className="modal-close" onClick={() => setView('home')} type="button">×</button>
             <p className="section-kicker">WELCOME TO SUPERSYAM</p>
             <h2 id="auth-heading">{authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชีใหม่'}</h2>
-            <p className="auth-payment-note"><strong>1. {authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชี'}</strong><span>2. ระบบพาไป Stripe เพื่อเลือก PromptPay QR หรือ Visa / Mastercard ยอด ฿{pendingPayment.amount.toLocaleString()}</span></p>
+            <p className="auth-payment-note"><strong>1. {authMode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชี'}</strong><span>2. เลือก PromptPay QR หรือ Visa / Mastercard ยอด ฿{pendingPayment.amount.toLocaleString()}</span></p>
             <form onSubmit={handleAuth}>
               <label>อีเมล<input autoComplete="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} /></label>
               <label>รหัสผ่าน<input autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={6} required type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
               {authError && <p className="form-error" role="alert">{authError}</p>}
+              {authNotice && <p className="form-notice" role="status">{authNotice}</p>}
               <button className="primary-action" disabled={isCheckingOut} type="submit">
-                {isCheckingOut ? 'กำลังเปิด Stripe Checkout...' : `${authMode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}และไปชำระเงิน`}
+                {isCheckingOut ? 'กำลังตรวจสอบบัญชี...' : authMode === 'login' ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
               </button>
             </form>
-            <button className="back-link" onClick={() => setAuthMode(authMode === 'login' ? 'signup' : 'login')} type="button">
+            <button className="back-link" onClick={() => { setAuthMode(authMode === 'login' ? 'signup' : 'login'); setAuthError(''); setAuthNotice(''); }} type="button">
               {authMode === 'login' ? 'ยังไม่มีบัญชี? สมัครสมาชิก' : 'มีบัญชีแล้ว? เข้าสู่ระบบ'}
             </button>
             <br />
             <button className="back-link" onClick={() => setView('home')} type="button">← กลับหน้าหลัก</button>
+          </div>
+        </section>
+      )}
+
+      {view === 'payment' && (
+        <section aria-labelledby="payment-heading" aria-modal="true" className="panel-view account-modal" role="dialog">
+          <div className="account-panel payment-panel">
+            <button aria-label="ปิดหน้าชำระเงิน" className="modal-close" onClick={() => setView('home')} type="button">×</button>
+            <p className="section-kicker">SECURE CHECKOUT</p>
+            <h2 id="payment-heading">เลือกวิธีชำระเงิน</h2>
+            <p className="payment-total">ยอดชำระ <strong>฿{pendingPayment.amount.toLocaleString()}</strong></p>
+            <div className="payment-options">
+              <button disabled={isCheckingOut} onClick={() => void payWith('promptpay')} type="button">
+                <span className="payment-option-icon" aria-hidden="true">▦</span>
+                <strong>PromptPay QR</strong>
+                <small>เปิด Stripe แล้วกด Continue เพื่อแสดง QR พร้อมเพย์</small>
+              </button>
+              <button disabled={isCheckingOut} onClick={() => void payWith('card')} type="button">
+                <span className="payment-option-icon" aria-hidden="true">▭</span>
+                <strong>Visa / Mastercard</strong>
+                <small>ชำระด้วยบัตรเครดิตหรือเดบิตอย่างปลอดภัย</small>
+              </button>
+            </div>
+            {isCheckingOut && <p className="payment-status" role="status">กำลังเปิด Stripe Checkout...</p>}
+            {checkoutError && <p className="form-error" role="alert">{checkoutError}</p>}
+            <button className="back-link" onClick={() => setView('home')} type="button">← กลับเลือกสินค้า</button>
           </div>
         </section>
       )}
