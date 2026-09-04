@@ -18,6 +18,8 @@ export function DealCard({
   onSelect,
   onToggleCompare,
 }: DealCardProps) {
+  const partnerName = deal.category === 'hotels' ? 'Agoda' : 'Klook';
+
   return (
     <article className="product-card">
       <div className="product-image">
@@ -48,7 +50,7 @@ export function DealCard({
           rel="sponsored noopener noreferrer"
           target="_blank"
         >
-          จองเลย
+          จองผ่าน {partnerName} ↗
         </a>
       </div>
     </article>

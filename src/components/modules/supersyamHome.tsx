@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { DealCard } from '@/components/DealCard';
-import { getBookingHref } from '@/lib/booking';
+import { getBookingHref, getCategoryBookingHref } from '@/lib/booking';
 import type { Category, PublicDeal } from '@/lib/partner/types';
 import { supabase } from '@/lib/supabase';
 
@@ -209,7 +209,7 @@ export function SupersyamHome() {
         </div>
       </header>
 
-      <main id="top">
+      {view === 'home' && <main id="top">
         <section className="travel-hero">
           <div className="hero-content">
             <p className="hero-kicker">THAILAND, YOUR WAY</p>
@@ -281,6 +281,14 @@ export function SupersyamHome() {
             </div>
             <div className="product-tools">
               <span className="all-link">{visibleProducts.length} รายการ</span>
+              <a
+                className="partner-all-link"
+                href={getCategoryBookingHref(category)}
+                rel="sponsored noopener noreferrer"
+                target="_blank"
+              >
+                ดูทั้งหมดบน Klook ↗
+              </a>
               {compareIds.length > 1 && (
                 <button className="compare-button" onClick={() => setSelectedProduct(compareProducts[0])} type="button">เปรียบเทียบ {compareIds.length}</button>
               )}
@@ -318,7 +326,7 @@ export function SupersyamHome() {
             </>
           )}
         </section>
-      </main>
+      </main>}
 
       {view === 'auth' && (
         <section className="panel-view">

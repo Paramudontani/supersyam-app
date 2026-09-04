@@ -2,12 +2,22 @@ import { NextResponse } from 'next/server';
 import {
   AffiliateConfigurationError,
   AffiliateProviderError,
+  resolveCategoryAffiliateUrl,
   resolveAffiliateUrl,
 } from '@/lib/affiliate';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
+  const category = searchParams.get('category');
+
+  if (category) {
+    const destination = resolveCategoryAffiliateUrl(category);
+    if (!destination) {
+      return NextResponse.json({ error: 'ไม่พบหมวดหมู่นี้' }, { status: 404 });
+    }
+    return NextResponse.redirect(destination, 302);
+  }
 
   if (!id) {
     return NextResponse.json({ error: 'ไม่พบรหัสดีล' }, { status: 400 });

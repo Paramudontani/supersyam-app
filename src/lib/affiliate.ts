@@ -1,4 +1,5 @@
 import { getInternalDeal } from '@/lib/partner/deals';
+import type { Category } from '@/lib/partner/types';
 
 type AgodaSearchResponse = {
   error?: { message?: string };
@@ -11,8 +12,31 @@ export class AffiliateProviderError extends Error {}
 const agodaApiUrl = process.env.AGODA_API_URL ?? 'http://affiliateapi7643.agoda.com/affiliateservice/lt_v1';
 
 function getKlookTrackingUrl(path: string): string {
-  const destination = `https://www.klook.com/th/${path}`;
+  const currentPaths: Record<string, string> = {
+    activity: 'experiences',
+    'car-rental': 'car-rentals',
+    'bus-tickets': 'transport',
+    flights: '',
+    esim: '',
+  };
+  const currentPath = currentPaths[path] ?? path;
+  const destination = `https://www.klook.com/th/${currentPath}`;
   return `https://affiliate.klook.com/redirect?aid=133386&aff_adid=1411178&k_site=${encodeURIComponent(destination)}&utm_source=supersyam&utm_medium=affiliate&utm_campaign=thailand-${encodeURIComponent(path)}`;
+}
+
+const klookCategoryPaths: Record<Category, string> = {
+  hotels: 'hotels',
+  tours: 'activity',
+  cars: 'car-rental',
+  buses: 'bus-tickets',
+  food: 'activity',
+  flights: 'flights',
+  esim: 'esim',
+};
+
+export function resolveCategoryAffiliateUrl(category: string): string | null {
+  const path = klookCategoryPaths[category as Category];
+  return path ? getKlookTrackingUrl(path) : null;
 }
 
 function getFutureStayDates(): { checkInDate: string; checkOutDate: string } {
