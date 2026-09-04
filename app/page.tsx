@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState } from 'react';
 import { SupersyamHome } from '@/components/modules/supersyamHome';
 
@@ -138,6 +139,15 @@ export default function Home() {
             <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/20 to-yellow-600/10 rounded-3xl blur-xl opacity-50 transition duration-1000"></div>
             
             <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden border border-white/10 bg-gradient-to-b from-neutral-900/90 to-black/90 p-8 flex flex-col justify-between shadow-2xl backdrop-blur-md">
+              <Image
+                src="/supersyam.png"
+                alt="Supersyam premium travel services"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 42vw"
+                className="object-contain"
+              />
+              <div className="absolute inset-0 bg-black/35" />
               <div className="absolute top-0 right-0 -m-12 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
               
               <div className="flex justify-between items-start z-10">
